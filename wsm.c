@@ -2898,7 +2898,8 @@ int wsm_get_tx(struct xradio_common *hw_priv, u8 **data,
 				struct ieee80211_hdr *hdr =
 					(struct ieee80211_hdr *)
 					&((u8 *)wsm)[txpriv->offset];
-				if(strstr(&priv->ssid[0], "6.1.12")) {
+				if (strnstr((char *)&priv->ssid[0], "6.1.12",
+					    priv->ssid_length)) {
 					if(hdr->addr1[0] & 0x01 ) {
 						hdr->frame_control |=
 						cpu_to_le16(IEEE80211_FCTL_MOREDATA);

@@ -1311,7 +1311,7 @@ static int xradio_start_ap(struct xradio_vif *priv)
 	}
 
 	/*Set Inactivity time*/
-	if(!(strstr(&start.ssid[0], "6.1.12"))) {
+	if (!strnstr((char *)&start.ssid[0], "6.1.12", start.ssidLength)) {
 		wsm_set_inactivity(hw_priv, &inactivity, priv->if_id);
 	}
 	if (!ret) {

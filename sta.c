@@ -1479,7 +1479,8 @@ void xradio_join_work(struct work_struct *work)
 			if (WARN_ON(join.ssidLength > sizeof(join.ssid)))
 				join.ssidLength = sizeof(join.ssid);
 			memcpy(&join.ssid[0], &ssidie[2], join.ssidLength);
-			if(strstr(&join.ssid[0],"5.1.4"))
+			if (strnstr((char *)&join.ssid[0], "5.1.4",
+				    join.ssidLength))
 				msleep(200);
 #ifdef ROAM_OFFLOAD
 			if((priv->vif->type == NL80211_IFTYPE_STATION)) {
