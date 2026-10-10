@@ -1948,7 +1948,9 @@ void wsm_unlock_tx(struct xradio_common *hw_priv)
 	else {
 		tx_lock = atomic_sub_return(1, &hw_priv->tx_lock);
 		if (tx_lock < 0) {
-			BUG_ON(1);
+			/* Unbalanced unlock.  Recover instead of panicking. */
+			atomic_set(&hw_priv->tx_lock, 0);
+			dev_err(hw_priv->pdev, "TX unlock underflow\n");
 		} else if (tx_lock == 0) {
 			xradio_bh_wakeup(hw_priv);
 			wsm_printk(XRADIO_DBG_MSG, "TX is unlocked.\n");
@@ -2258,7 +2260,10 @@ int wsm_handle_rx(struct xradio_common *hw_priv, int id,
 					id & ~0x0400);
 			break;
 		default:
-			BUG_ON(1);
+			wsm_printk(XRADIO_DBG_ERROR,
+				   "unknown confirm ID=0x%04X.\n", id);
+			ret = -EINVAL;
+			break;
 		}
 
 		spin_lock(&hw_priv->wsm_cmd.lock);
@@ -2491,8 +2496,9 @@ static bool wsm_handle_tx_data(struct xradio_vif *priv,
 		/* See detailed description of "join" below.
 		 * We are dropping everything except AUTH in non-joined mode. */
 		wsm_printk(XRADIO_DBG_MSG, "Drop frame (0x%.4X).\n", fctl);
-		BUG_ON(xradio_queue_remove(queue,
-			__le32_to_cpu(wsm->packetID)));
+		/* The frame may already have been removed (for example after a
+		 * requeue race).  Dropping it twice is not worth a panic. */
+		xradio_queue_remove(queue, __le32_to_cpu(wsm->packetID));
 		handled = true;
 	}
 	break;
