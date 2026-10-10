@@ -350,6 +350,10 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 	sema_init(&hw_priv->tx_lock_sem, 1);
 
 	hw_priv->workqueue = create_singlethread_workqueue(XRADIO_WORKQUEUE);
+	if (!hw_priv->workqueue) {
+		ieee80211_free_hw(hw);
+		return NULL;
+	}
 	sema_init(&hw_priv->scan.lock, 1);
 	sema_init(&hw_priv->scan.status_lock,1);
 	INIT_WORK(&hw_priv->scan.work, xradio_scan_work);
@@ -377,6 +381,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 #endif
 	if (unlikely(xradio_queue_stats_init(&hw_priv->tx_queue_stats,
 			WLAN_LINK_ID_MAX,sizeof(int[WLAN_LINK_ID_MAX]),xradio_skb_dtor, hw_priv))) {
+		destroy_workqueue(hw_priv->workqueue);
 		ieee80211_free_hw(hw);
 		return NULL;
 	}
@@ -386,6 +391,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 			for (; i > 0; i--)
 				xradio_queue_deinit(&hw_priv->tx_queue[i - 1]);
 			xradio_queue_stats_deinit(&hw_priv->tx_queue_stats);
+			destroy_workqueue(hw_priv->workqueue);
 			ieee80211_free_hw(hw);
 			return NULL;
 		}
