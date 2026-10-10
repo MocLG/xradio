@@ -442,13 +442,14 @@ void xradio_free_common(struct ieee80211_hw *dev)
 
 	cancel_work_sync(&hw_priv->query_work);
 	del_timer_sync(&hw_priv->ba_timer);
+	/* Stop all work before the mutexes they use are destroyed. */
+	flush_workqueue(hw_priv->workqueue);
+	destroy_workqueue(hw_priv->workqueue);
+	hw_priv->workqueue = NULL;
 	mutex_destroy(&hw_priv->wsm_oper_lock);
 	mutex_destroy(&hw_priv->conf_mutex);
 	mutex_destroy(&hw_priv->wsm_cmd_mux);
 	wsm_buf_deinit(&hw_priv->wsm_cmd_buf);
-	flush_workqueue(hw_priv->workqueue);
-	destroy_workqueue(hw_priv->workqueue);
-	hw_priv->workqueue = NULL;
 
 	xradio_deinit_resv_skb(hw_priv);
 	if (hw_priv->skb_cache) {
@@ -460,10 +461,9 @@ void xradio_free_common(struct ieee80211_hw *dev)
 		xradio_queue_deinit(&hw_priv->tx_queue[i]);
 	xradio_queue_stats_deinit(&hw_priv->tx_queue_stats);
 
-	for (i = 0; i < XRWL_MAX_VIFS; i++) {
-		kfree(hw_priv->vif_list[i]);
+	/* The vif objects are owned by mac80211, only drop our pointers. */
+	for (i = 0; i < XRWL_MAX_VIFS; i++)
 		hw_priv->vif_list[i] = NULL;
-	}
 
 //fixed memory leakage by yangfh
 #ifdef MCAST_FWDING
