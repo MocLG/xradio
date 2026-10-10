@@ -375,6 +375,12 @@ void xradio_scan_work(struct work_struct *work)
 	if (!priv) {
 		scan_printk(XRADIO_DBG_WARN, "interface removed, "
 		            "ignoring scan work\n");
+		/* The scan lock and the TX lock were taken when the scan was
+		 * started.  They must be released or the next scan or flush
+		 * blocks forever. */
+		hw_priv->scan.req = NULL;
+		wsm_unlock_tx(hw_priv);
+		up(&hw_priv->scan.lock);
 		return;
 	}
 
@@ -823,6 +829,7 @@ void xradio_probe_work(struct work_struct *work)
 	if (!priv) {
 		up(&hw_priv->scan.lock);
 		mutex_unlock(&hw_priv->conf_mutex);
+		wsm_unlock_tx(hw_priv);
 		scan_printk(XRADIO_DBG_ERROR, "%s:priv error!\n", __func__);
 		return;
 	}
