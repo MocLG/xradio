@@ -282,7 +282,7 @@ int xradio_hw_sched_scan_start(struct ieee80211_hw *hw,
 	scan_printk(XRADIO_DBG_NIY, "[SCAN] Scan request for %d SSIDs.\n", 
 	            req->n_ssids);
 
-	if (req->n_ssids > hw->wiphy->max_scan_ssids) [
+	if (req->n_ssids > hw->wiphy->max_scan_ssids) {
 		scan_printk(XRADIO_DBG_ERROR, "%s: ssids is too much(%d)\n", 
 		            __func__, req->n_ssids);
 		return -EINVAL;
@@ -895,7 +895,7 @@ void xradio_probe_work(struct work_struct *work)
 	if (!ret)
 		IEEE80211_SKB_CB(frame.skb)->flags |= IEEE80211_TX_STAT_ACK;
 
-	BUG_ON(xradio_queue_remove(queue, hw_priv->pending_frame_id));
+	xradio_queue_remove(queue, hw_priv->pending_frame_id);
 
 	if (ret) {
 		hw_priv->scan.direct_probe = 0;
