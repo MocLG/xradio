@@ -2712,7 +2712,12 @@ int wsm_get_tx(struct xradio_common *hw_priv, u8 **data,
 	if (hw_priv->wsm_cmd.ptr) {
 		++count;
 		spin_lock(&hw_priv->wsm_cmd.lock);
-		BUG_ON(!hw_priv->wsm_cmd.ptr);
+		if (unlikely(!hw_priv->wsm_cmd.ptr)) {
+			/* The command timed out and was dropped while we were
+			 * looking at it.  There is nothing left to send. */
+			spin_unlock(&hw_priv->wsm_cmd.lock);
+			return 0;
+		}
 		*data = hw_priv->wsm_cmd.ptr;
 		*tx_len = hw_priv->wsm_cmd.len;
 		*burst = 1;
