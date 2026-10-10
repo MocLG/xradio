@@ -1434,6 +1434,7 @@ static int wsm_event_indication(struct xradio_common *hw_priv,
 
 	if (unlikely(priv->mode == NL80211_IFTYPE_UNSPECIFIED)) {
 		/* STA is stopped. */
+		spin_unlock(&priv->vif_lock);
 		return 0;
 	}
 	spin_unlock(&priv->vif_lock);
