@@ -244,7 +244,11 @@ static int xradio_firmware(struct xradio_common *hw_priv)
 				fw_path);
 		goto error;
 	}
-	BUG_ON(!firmware->data);
+	if (!firmware->data || !firmware->size) {
+		dev_err(hw_priv->pdev, "firmware file %s is empty.\n", fw_path);
+		ret = -EINVAL;
+		goto error;
+	}
 
 	buf = kmalloc(DOWNLOAD_BLOCK_SIZE, GFP_KERNEL);
 	if (!buf) {
