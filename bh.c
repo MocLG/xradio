@@ -508,12 +508,13 @@ static int xradio_bh_rx(struct xradio_common *hw_priv, u16* nextlen) {
 		goto out;
 	}
 
-	/* the ctrl register is appened to the end of the wsm frame
-	 * so we can use this to avoid reading the control register
-	 * again for the next read .. but if this is invalid we'll
-	 * do an invalid read and the firmware will crash so this
-	 * probably needs some sort of validation */
-	*nextlen = READLEN(__le16_to_cpu(((__le16 *) data)[(alloc_len >> 1) - 1]));
+	/* The control register is piggybacked right after the WSM frame, so
+	 * it lives at the end of the bytes we actually asked the device for
+	 * (read_len), not at the end of the SDIO aligned transfer
+	 * (alloc_len).  Reading the alignment padding returns stale data and
+	 * makes the driver request the wrong amount of data on the next
+	 * round, which makes the firmware assert. */
+	*nextlen = READLEN(__le16_to_cpu(((__le16 *) data)[(read_len >> 1) - 1]));
 
 	/* check wsm length. */
 	wsm = (struct wsm_hdr *) data;
@@ -543,6 +544,9 @@ static int xradio_bh_rx(struct xradio_common *hw_priv, u16* nextlen) {
 		dev_err(hw_priv->pdev, "firmware exception!\n");
 		wsm_handle_exception(hw_priv, &data[sizeof(*wsm)],
 				wsm_len - sizeof(*wsm));
+		/* The firmware is dead.  Tell the rest of the driver so that
+		 * it does not keep talking to a dead device. */
+		hw_priv->bh_error = 1;
 		ret = -1;
 		goto out;
 	}
@@ -741,7 +745,7 @@ static int xradio_bh_exchange(struct xradio_common *hw_priv) {
 			break;
 		}
 	} while ((txdone > 0 || rxdone > 0) && !kthread_should_stop());
-	return 0;
+	return hw_priv->bh_error ? -1 : 0;
 }
 
 static int xradio_bh(void *arg)
@@ -755,8 +759,15 @@ static int xradio_bh(void *arg)
 	for (;;) {
 		timeout = HZ / 30;
 
-		// wait for something to happen or a timeout
-		status = wait_event_interruptible_timeout(hw_priv->bh_wq, ( {
+		/* An error was reported from outside the thread (or the
+		 * firmware is gone).  Stop servicing the device. */
+		if (hw_priv->bh_error)
+			break;
+
+		/* wait for something to happen or a timeout.  The thread is
+		 * not interruptible so a stray signal cannot tear it down and
+		 * leave the driver without a data path. */
+		status = wait_event_timeout(hw_priv->bh_wq, ( {
 					wake = atomic_xchg(&hw_priv->bh_tx, 0);
 					term = kthread_should_stop();
 					suspend = atomic_read(&hw_priv->bh_suspend);
@@ -768,10 +779,6 @@ static int xradio_bh(void *arg)
 			}
 		} else if (term) {
 			dev_dbg(hw_priv->pdev, "xradio_bh exit!\n");
-			break;
-		} else if (status < 0) {
-			dev_err(hw_priv->pdev, "bh_error=%d, status=%ld\n",
-					hw_priv->bh_error, status);
 			break;
 		} else if (!status) {
 			/* check if there is data waiting but we missed the interrupt*/
@@ -818,21 +825,34 @@ static int xradio_bh(void *arg)
 			/* bh thread go to suspend. */
 			atomic_set(&hw_priv->bh_suspend, XRADIO_BH_SUSPENDED);
 			wake_up(&hw_priv->bh_evt_wq);
-			status = wait_event_interruptible(hw_priv->bh_wq,
-					XRADIO_BH_RESUME == atomic_read(&hw_priv->bh_suspend));
+			wait_event(hw_priv->bh_wq,
+					XRADIO_BH_RESUME == atomic_read(&hw_priv->bh_suspend) ||
+					kthread_should_stop());
 
-			if (status < 0) {
-				dev_err(hw_priv->pdev, "Failed to wait for resume: %ld.\n",
-						status);
+			if (kthread_should_stop())
 				break;
-			}
 			dev_dbg(hw_priv->pdev, "Host resume.\n");
 			atomic_set(&hw_priv->bh_suspend, XRADIO_BH_RESUMED);
 			wake_up(&hw_priv->bh_evt_wq);
 		}
 	} /* for (;;)*/
 
-	dev_err(hw_priv->pdev, "bh thread exiting\n");
+	/*
+	 * If this is not a requested shutdown the device is no longer being
+	 * serviced.  Mark the driver as failed and wake every waiter so that
+	 * callers return an error instead of hanging the kernel on a device
+	 * that will never answer again.
+	 */
+	if (!kthread_should_stop()) {
+		hw_priv->bh_error = 1;
+		wake_up(&hw_priv->bh_evt_wq);
+		wake_up(&hw_priv->wsm_cmd_wq);
+		wake_up(&hw_priv->wsm_startup_done);
+		wake_up(&hw_priv->tx_queue_stats.wait_link_id_empty);
+	}
+
+	dev_err(hw_priv->pdev, "bh thread exiting, error=%d\n",
+			hw_priv->bh_error);
 
 	return 0;
 }
