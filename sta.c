@@ -1133,6 +1133,12 @@ void xradio_event_handler(struct work_struct *work)
 			        struct ieee80211_mgmt *deauth;
 			        struct xradio_link_entry *entry = NULL;
 
+				if (link_id <= 0 || link_id > MAX_STA_IN_AP_MODE) {
+					sta_printk(XRADIO_DBG_WARN,
+						   "Inactivity event with bad link_id %d\n",
+						   link_id);
+					break;
+				}
 				sta_printk(XRADIO_DBG_WARN, "Inactivity Event Recieved for "
 						"link_id %d\n", link_id);
 				skb = dev_alloc_skb(sizeof(struct ieee80211_mgmt) + 64);
