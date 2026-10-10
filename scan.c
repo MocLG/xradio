@@ -26,10 +26,16 @@ static void xradio_remove_wps_p2p_ie(struct wsm_template_frame *frame)
 	u32 wps_ie_len = 0;
 
 
+	if (frame->skb->len < sizeof(struct ieee80211_hdr_3addr))
+		return;
+
 	ies = &frame->skb->data[sizeof(struct ieee80211_hdr_3addr)];
 	ies_len = frame->skb->len - sizeof(struct ieee80211_hdr_3addr);
 	while (ies_len >= 6) {
 		ie_len = ies[1] + 2;
+		/* A length byte can claim more than the frame holds. */
+		if (ie_len > ies_len)
+			break;
 		ies_len -= ie_len;
 		if ((ies[0] == WLAN_EID_VENDOR_SPECIFIC) && 
 			  (ies[2] == 0x00 && ies[3] == 0x50 && 
@@ -47,7 +53,9 @@ static void xradio_remove_wps_p2p_ie(struct wsm_template_frame *frame)
 	}
 
 	if (p2p_ie_len || wps_ie_len) {
-		skb_trim(frame->skb, frame->skb->len - (p2p_ie_len + wps_ie_len));
+		if (p2p_ie_len + wps_ie_len <= frame->skb->len)
+			skb_trim(frame->skb,
+				 frame->skb->len - (p2p_ie_len + wps_ie_len));
 	}
 }
 
