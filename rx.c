@@ -130,8 +130,9 @@ void xradio_rx_cb(struct xradio_vif *priv,
 #endif
 
 #if defined(CONFIG_XRADIO_USE_EXTENSIONS)
-	if ((ieee80211_is_action(frame->frame_control))
-	    && (mgmt->u.action.category == WLAN_CATEGORY_PUBLIC)) {
+	if (skb->len >= 24 + 18 &&
+	    ieee80211_is_action(frame->frame_control) &&
+	    mgmt->u.action.category == WLAN_CATEGORY_PUBLIC) {
 		u8 *action = (u8*)&mgmt->u.action.category;
 		xradio_check_go_neg_conf_success(hw_priv, action);
 	}

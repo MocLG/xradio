@@ -920,7 +920,8 @@ void xradio_tx(struct ieee80211_hw *dev, struct ieee80211_tx_control *control, s
 	xradio_frame_monitor(hw_priv,skb,true);
 #endif
 
-	if (ieee80211_is_action(frame->frame_control) && 
+	if (skb->len >= 24 + 18 &&
+		ieee80211_is_action(frame->frame_control) &&
 		mgmt->u.action.category == WLAN_CATEGORY_PUBLIC) {
 		u8 *action = (u8*)&mgmt->u.action.category;
 		xradio_check_go_neg_conf_success(hw_priv, action);
