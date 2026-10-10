@@ -75,7 +75,13 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 
 		wsm_key = &hw_priv->keys[idx];
 
-		BUG_ON(pairwise && !sta);
+		if (pairwise && !sta) {
+			wiphy_err(dev->wiphy,
+				  "pairwise key without a station\n");
+			xradio_free_key(hw_priv, idx);
+			ret = -EINVAL;
+			goto finally;
+		}
 		if (sta)
 			peer_addr = sta->addr;
 
