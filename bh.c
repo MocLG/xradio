@@ -178,6 +178,9 @@ int wsm_release_tx_buffer(struct xradio_common *hw_priv, int count)
 		*/
 		dev_err(hw_priv->pdev, "hw_bufs_used=%d, count=%d.\n",
 				hw_priv->hw_bufs_used, count);
+		/* The firmware confirmed a frame it was never given.  Keep
+		 * the counter sane instead of letting it drift negative. */
+		hw_priv->hw_bufs_used = 0;
 		ret = -1;
 	} else if (hw_bufs_used >= (hw_priv->wsm_caps.numInpChBufs - 1))
 		ret = 1;
@@ -190,12 +193,17 @@ int wsm_release_vif_tx_buffer(struct xradio_common *hw_priv, int if_id, int coun
 {
 	int ret = 0;
 
+	if (WARN_ON(if_id < 0 || if_id >= XRWL_MAX_VIFS))
+		return -1;
+
 	hw_priv->hw_bufs_used_vif[if_id] -= count;
+	if (WARN_ON(hw_priv->hw_bufs_used_vif[if_id] < 0)) {
+		hw_priv->hw_bufs_used_vif[if_id] = 0;
+		ret = -1;
+	}
 	if (!hw_priv->hw_bufs_used_vif[if_id])
 		wake_up(&hw_priv->bh_evt_wq);
 
-	if (WARN_ON(hw_priv->hw_bufs_used_vif[if_id] < 0))
-		ret = -1;
 	return ret;
 }
 #ifdef MCAST_FWDING
@@ -652,7 +660,15 @@ static int xradio_bh_tx(struct xradio_common *hw_priv){
 	int ret;
 	u8 *data;
 
-	BUG_ON(hw_priv->hw_bufs_used > hw_priv->wsm_caps.numInpChBufs);
+	if (unlikely(hw_priv->hw_bufs_used > hw_priv->wsm_caps.numInpChBufs)) {
+		/* The firmware confirmed more frames than it was ever
+		 * given.  Do not take the kernel down over the device
+		 * losing track of its buffers, just clamp the counter. */
+		dev_err(hw_priv->pdev, "hw_bufs_used=%d > numInpChBufs=%d\n",
+				hw_priv->hw_bufs_used,
+				hw_priv->wsm_caps.numInpChBufs);
+		hw_priv->hw_bufs_used = hw_priv->wsm_caps.numInpChBufs;
+	}
 	txavailable = hw_priv->wsm_caps.numInpChBufs - hw_priv->hw_bufs_used;
 	if (txavailable) {
 		/* Wake up the devices */
