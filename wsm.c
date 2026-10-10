@@ -2959,22 +2959,22 @@ static int wsm_buf_reserve(struct wsm_buf *buf, size_t extra_size)
 {
 	size_t pos = buf->data - buf->begin;
 	size_t size = pos + extra_size;
+	void *new_begin;
 
+	/* Round the new size up to a whole SDIO block.  SDIO_BLOCK_SIZE is
+	 * 528, which is not a power of two, so the usual masking arithmetic
+	 * does not work here.  The old code could round the size down below
+	 * the data already stored in the buffer, which corrupted the heap. */
+	size = (size + SDIO_BLOCK_SIZE - 1) / SDIO_BLOCK_SIZE * SDIO_BLOCK_SIZE;
 
-	if (size & (SDIO_BLOCK_SIZE - 1)) {
-		size &= SDIO_BLOCK_SIZE;
-		size += SDIO_BLOCK_SIZE;
-	}
-
-	buf->begin = krealloc(buf->begin, size, GFP_KERNEL);
-	if (buf->begin) {
-		buf->data = &buf->begin[pos];
-		buf->end = &buf->begin[size];
-		return 0;
-	} else {
-		buf->end = buf->data = buf->begin;
+	new_begin = krealloc(buf->begin, size, GFP_KERNEL);
+	if (!new_begin)
 		return -ENOMEM;
-	}
+
+	buf->begin = new_begin;
+	buf->data = &buf->begin[pos];
+	buf->end = &buf->begin[size];
+	return 0;
 }
 
 static struct xradio_vif 
