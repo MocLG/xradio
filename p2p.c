@@ -26,6 +26,11 @@ void xradio_frame_monitor(struct xradio_common *hw_priv, struct sk_buff *skb, bo
 	u8 *subtype       = &(action[5]);
 	u8 *oui_subtype   = &(action[6]);
 
+	/* The GO negotiation status is read at a fixed offset, so a short
+	 * action frame must not be walked. */
+	if (skb->len < 24 + 18)
+		return;
+
 
 	if(ieee80211_is_action(frame->frame_control)) {
 		if( *category_code == WLAN_CATEGORY_PUBLIC) {
