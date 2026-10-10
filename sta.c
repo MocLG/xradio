@@ -183,7 +183,6 @@ int xradio_add_interface(struct ieee80211_hw *dev,
 	int ret;
 	struct xradio_common *hw_priv = dev->priv;
 	struct xradio_vif *priv;
-	struct xradio_vif **drv_priv = (void *)vif->drv_priv;
 	int i;
 	if (atomic_read(&hw_priv->num_vifs) >= XRWL_MAX_VIFS)
 		return -EOPNOTSUPP;
@@ -201,7 +200,6 @@ int xradio_add_interface(struct ieee80211_hw *dev,
 	priv = xrwl_get_vif_from_ieee80211(vif);
 	atomic_set(&priv->enabled, 0);
 
-	*drv_priv = priv;
 	/* __le32 auto_calibration_mode = __cpu_to_le32(1); */
 
 	mutex_lock(&hw_priv->conf_mutex);
@@ -1595,10 +1593,9 @@ void xradio_unjoin_work(struct work_struct *work)
 
 	if (priv->join_status &&
 			priv->join_status > XRADIO_JOIN_STATUS_STA) {
-		sta_printk(XRADIO_DBG_ERROR, 
+		sta_printk(XRADIO_DBG_ERROR,
 				"%s: Unexpected: join status: %d\n",
 				__func__, priv->join_status);
-		BUG_ON(1);
 	}
 	if (priv->join_status) {
 		cancel_work_sync(&priv->update_filtering_work);
