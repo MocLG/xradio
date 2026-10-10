@@ -861,8 +861,10 @@ void xradio_tx(struct ieee80211_hw *dev, struct ieee80211_tx_control *control, s
 	struct ieee80211_hdr *frame = (struct ieee80211_hdr *)skb->data;
 	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)skb->data;
 
-	if (!skb->data)
-		BUG_ON(1);
+	if (!skb->data) {
+		ieee80211_free_txskb(dev, skb);
+		return;
+	}
 
 	if (!(t.tx_info->control.vif)) {
 		ret = __LINE__;
@@ -1010,14 +1012,23 @@ void xradio_tx(struct ieee80211_hw *dev, struct ieee80211_tx_control *control, s
 	spin_lock_bh(&priv->ps_state_lock);
 	{
 		tid_update = xradio_tx_h_pm_state(priv, &t);
-		BUG_ON(xradio_queue_put(&hw_priv->tx_queue[t.queue],
-				t.skb, &t.txpriv));
+		ret = xradio_queue_put(&hw_priv->tx_queue[t.queue],
+				t.skb, &t.txpriv);
 #ifdef ROC_DEBUG
 		txrx_printk(XRADIO_DBG_ERROR, "QPUT %x, %pM, if_id - %d\n",
 			t.hdr->frame_control, t.da, priv->if_id);
 #endif
 	}
 	spin_unlock_bh(&priv->ps_state_lock);
+
+	if (unlikely(ret)) {
+		/* The queue has no free slot.  Drop the frame instead of
+		 * taking the kernel down. */
+		dev_warn(hw_priv->pdev, "no free TX queue slot\n");
+		rcu_read_unlock();
+		ret = __LINE__;
+		goto drop;
+	}
 
 #if defined(CONFIG_XRADIO_USE_EXTENSIONS)
 	if (tid_update && sta)
