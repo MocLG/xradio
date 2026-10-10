@@ -113,18 +113,37 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 	//parse SDD config.
 	hw_priv->is_BT_Present = false;
 	pElement = (struct xradio_sdd *)hw_priv->sdd->data;
-	parsedLength += (FIELD_OFFSET(struct xradio_sdd, data) + pElement->length);
-	pElement = FIND_NEXT_ELT(pElement);
 
 	while (parsedLength < hw_priv->sdd->size) {
+		size_t elt_size;
+
+		/* Need at least the id and length bytes before the element
+		 * header can be read. */
+		if (parsedLength + FIELD_OFFSET(struct xradio_sdd, data) >
+		    hw_priv->sdd->size)
+			break;
+
+		elt_size = FIELD_OFFSET(struct xradio_sdd, data) +
+			   pElement->length;
+		if (parsedLength + elt_size > hw_priv->sdd->size) {
+			dev_warn(hw_priv->pdev,
+				 "truncated SDD element id=%d len=%d\n",
+				 pElement->id, pElement->length);
+			break;
+		}
+
 		switch (pElement->id) {
 		case SDD_PTA_CFG_ELT_ID:
+			if (pElement->length < 4)
+				break;
 			hw_priv->conf_listen_interval = (*((u16 *)pElement->data+1) >> 7) & 0x1F;
 			hw_priv->is_BT_Present = true;
 			xradio_dbg(XRADIO_DBG_NIY, "PTA element found.Listen Interval %d\n",
 			           hw_priv->conf_listen_interval);
 			break;
 		case SDD_REFERENCE_FREQUENCY_ELT_ID:
+			if (pElement->length < 2)
+				break;
 			switch(*((uint16_t*)pElement->data)) {
 			case 0x32C8:
 				*dpll = 0x1D89D241;
@@ -168,7 +187,7 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 		default:
 			break;
 		}
-		parsedLength += (FIELD_OFFSET(struct xradio_sdd, data) + pElement->length);
+		parsedLength += elt_size;
 		pElement = FIND_NEXT_ELT(pElement);
 	}
 	
