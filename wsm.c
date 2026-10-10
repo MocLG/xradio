@@ -1373,7 +1373,13 @@ static int wsm_receive_indication(struct xradio_common *hw_priv,
 		//remove wsm hdr of skb
 		hdr_len = buf->data - buf->begin;
 		skb_pull(*skb_p, hdr_len);
-		
+
+		/* The frame must still hold an 802.11 header. */
+		if ((*skb_p)->len < sizeof(struct ieee80211_hdr)) {
+			spin_unlock(&priv->vif_lock);
+			return 0;
+		}
+
 		/* FW Workaround: Drop probe resp or
 		beacon when RSSI is 0 */
 		hdr = (struct ieee80211_hdr *) (*skb_p)->data;
