@@ -171,7 +171,7 @@ static int xradio_pm_init_common(struct xradio_pm_state *pm,
 		pm_printk(XRADIO_DBG_ERROR, "%s:platform_device_add failed(%d)!\n",
 		           __FUNCTION__, ret);
 		platform_driver_unregister(&xradio_power_driver);
-		kfree(pm->pm_dev);
+		platform_device_put(pm->pm_dev);
 		pm->pm_dev = NULL;
 	}
 
