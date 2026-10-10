@@ -100,8 +100,12 @@ static void tx_policy_build(const struct xradio_common *hw_priv,
 	struct ieee80211_tx_rate tmp_tx_rate;
 	struct ieee80211_rate * tmp_rate = NULL;
 	s32 key_sort_value = 0;
-	BUG_ON(rates[0].idx < 0);
+
 	memset(policy, 0, sizeof(*policy));
+
+	/* A policy without a valid first rate cannot be built. */
+	if (rates[0].idx < 0)
+		return;
 
 
 	txrx_printk(XRADIO_DBG_NIY,"============================");
@@ -739,6 +743,8 @@ xradio_tx_h_rate_policy(struct xradio_common *hw_priv, struct xradio_txinfo *t,
 
 	wsm->flags |= t->txpriv.rate_id << 4;
 	t->rate = xradio_get_tx_rate(hw_priv, &t->tx_info->control.rates[0]);
+	if (unlikely(!t->rate))
+		return -EFAULT;
 	if (t->txpriv.use_bg_rate)
 		wsm->maxTxRate = (u8)(t->txpriv.use_bg_rate & 0x3f);
 	else
