@@ -688,7 +688,7 @@ xradio_tx_h_bt(struct xradio_vif *priv, struct xradio_txinfo *t, struct wsm_tx *
 		 t->skb->len >= t->hdrlen + 8) {
 		/* Skip LLC SNAP header (+6) */
 		u8 *payload = &t->skb->data[t->hdrlen];
-		u16 *ethertype = (u16 *) &payload[6];
+		__be16 *ethertype = (__be16 *) &payload[6];
 		if (unlikely(be16_to_cpu(*ethertype) == ETH_P_PAE))
 			priority = WSM_EPTA_PRIORITY_EAPOL;
 	} else if (unlikely(ieee80211_is_assoc_req(t->hdr->frame_control) ||
