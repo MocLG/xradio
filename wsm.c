@@ -2812,8 +2812,14 @@ int wsm_get_tx(struct xradio_common *hw_priv, u8 **data,
 					tx_allowed_mask,
 					&wsm, &tx_info, &txpriv)) {
 				spin_unlock(&priv->vif_lock);
-				if_pending = 0;
-				continue;
+				/* Try the other interface once, then give up.
+				 * Continuing without the check made this loop
+				 * spin forever when no frame was pending. */
+				if (if_pending) {
+					if_pending = 0;
+					continue;
+				}
+				break;
 			}
 /*
 #ifdef ROC_DEBUG
