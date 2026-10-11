@@ -547,7 +547,7 @@ xradio_tx_h_crypt(struct xradio_vif *priv,
 
 	if (!t->tx_info->control.hw_key ||
 	    !(t->hdr->frame_control &
-	     __cpu_to_le32(IEEE80211_FCTL_PROTECTED)))
+	     cpu_to_le16(IEEE80211_FCTL_PROTECTED)))
 		return 0;
 
 	iv_len = t->tx_info->control.hw_key->iv_len;
@@ -890,7 +890,7 @@ void xradio_tx(struct ieee80211_hw *dev, struct ieee80211_tx_control *control, s
 		/* since Umac had already alloc IV space in ccmp skb, so we need to add this iv_len as the new offset to LLC */
 		u8* llc = NULL;
 		if(t.tx_info->control.hw_key && 
-		  	(t.hdr->frame_control & __cpu_to_le32(IEEE80211_FCTL_PROTECTED)) &&
+		  	(t.hdr->frame_control & cpu_to_le16(IEEE80211_FCTL_PROTECTED)) &&
 		  		(t.tx_info->control.hw_key->cipher == WLAN_CIPHER_SUITE_CCMP))
 			llc = skb->data+ieee80211_hdrlen(frame->frame_control) + t.tx_info->control.hw_key->iv_len;
 		else

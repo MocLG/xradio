@@ -2469,7 +2469,7 @@ static bool wsm_handle_tx_data(struct xradio_vif *priv,
 	if (action == doTx) {
 		if (unlikely(ieee80211_is_probe_req(fctl))) {
 			action = doProbe;
-		} else if ((fctl & __cpu_to_le32(IEEE80211_FCTL_PROTECTED)) &&
+		} else if ((fctl & cpu_to_le16(IEEE80211_FCTL_PROTECTED)) &&
 			tx_info->control.hw_key &&
 			unlikely(tx_info->control.hw_key->keyidx !=
 					priv->wep_default_key_id) &&
