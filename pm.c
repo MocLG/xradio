@@ -713,6 +713,12 @@ static int __xradio_wow_resume(struct xradio_vif *priv)
 	state = pm_state_vif->suspend_state;
 	pm_state_vif->suspend_state = NULL;
 
+	/* Nothing was stored for this interface.  This happens when
+	 * __xradio_wow_suspend() failed for it and the caller rolls the
+	 * already suspended interfaces back, so there is nothing to undo. */
+	if (!state)
+		return 0;
+
 #ifdef ROAM_OFFLOAD
 	if((priv->vif->type == NL80211_IFTYPE_STATION)
 	&& (priv->join_status == XRADIO_JOIN_STATUS_STA))
