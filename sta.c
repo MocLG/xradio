@@ -1334,11 +1334,11 @@ void xradio_offchannel_work(struct work_struct *work)
 			sta_printk(XRADIO_DBG_ERROR, "xradio_offchannel_work: "
 				       "queue_remove failed %d\n", ret);
 		wsm_unlock_tx(hw_priv);
-		//workaround by yangfh
-		up(&hw_priv->scan.lock);
+		/* The scan lock could not be taken, so it must not be
+		 * released here.  Giving it back let a scan run at the same
+		 * time as the operation that already owns it. */
 		ieee80211_connection_loss(priv->vif);
-		sta_printk(XRADIO_DBG_ERROR,"lock %d\n", hw_priv->scan.lock.count);
-		
+
 		return;
 	}
 	mutex_lock(&hw_priv->conf_mutex);
