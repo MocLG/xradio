@@ -520,13 +520,11 @@ static int xradio_bh_rx(struct xradio_common *hw_priv, u16* nextlen) {
 		goto out;
 	}
 
-	/* The control register is piggybacked right after the WSM frame, so
-	 * it lives at the end of the bytes we actually asked the device for
-	 * (read_len), not at the end of the SDIO aligned transfer
-	 * (alloc_len).  Reading the alignment padding returns stale data and
-	 * makes the driver request the wrong amount of data on the next
-	 * round, which makes the firmware assert. */
-	*nextlen = READLEN(__le16_to_cpu(((__le16 *) data)[(read_len >> 1) - 1]));
+	/* The control register is piggybacked onto the data we just read and
+	 * is the last two bytes of the transfer.  This is the same offset the
+	 * vendor driver and the cw1200 driver use, so keep it in step with
+	 * alloc_len even though that is the SDIO aligned size. */
+	*nextlen = READLEN(__le16_to_cpu(((__le16 *) data)[(alloc_len >> 1) - 1]));
 
 	/* check wsm length. */
 	wsm = (struct wsm_hdr *) data;
