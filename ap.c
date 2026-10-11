@@ -490,12 +490,15 @@ void xradio_bss_info_changed(struct ieee80211_hw *dev,
 				BUG_ON(!hw_priv->channel);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
 				hw_priv->ht_oper.ht_cap = sta->deflink.ht_cap;
-				priv->bss_params.operationalRateSet =__cpu_to_le32(
-				  xradio_rate_mask_to_wsm(hw_priv, sta->deflink.supp_rates[hw_priv->channel->band]));
+				/* operationalRateSet is a plain CPU endian u32 (see the
+				 * -1 and ~0xF uses above), so it must not be converted
+				 * here; wsm_set_bss_params() converts on the wire. */
+				priv->bss_params.operationalRateSet =
+				  xradio_rate_mask_to_wsm(hw_priv, sta->deflink.supp_rates[hw_priv->channel->band]);
 #else
 				hw_priv->ht_oper.ht_cap = sta->ht_cap;
-				priv->bss_params.operationalRateSet =__cpu_to_le32(
-				  xradio_rate_mask_to_wsm(hw_priv, sta->supp_rates[hw_priv->channel->band]));
+				priv->bss_params.operationalRateSet =
+				  xradio_rate_mask_to_wsm(hw_priv, sta->supp_rates[hw_priv->channel->band]);
 #endif
 				/* TODO by Icenowy: I think this may lead to some problems. */
 //				hw_priv->ht_oper.channel_type   = info->channel_type;
