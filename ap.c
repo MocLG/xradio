@@ -1427,7 +1427,7 @@ int xradio_alloc_link_id(struct xradio_vif *priv, const u8 *mac)
 			ret = i + 1;
 			break;
 		} else if (priv->link_id_db[i].status != XRADIO_LINK_HARD &&
-		           !hw_priv->tx_queue_stats.link_map_cache[i + 1]) {
+		           !hw_priv->tx_queue_stats.link_map_cache[priv->if_id][i + 1]) {
 			unsigned long inactivity = now - priv->link_id_db[i].timestamp;
 			if (inactivity < max_inactivity)
 				continue;
