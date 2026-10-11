@@ -1,4 +1,5 @@
 #include "xradio.h"
+#include "p2p.h"
 
 #ifdef TES_P2P_0002_ROC_RESTART
 ///w, TES_P2P_0002 WorkAround:

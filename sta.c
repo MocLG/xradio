@@ -1317,7 +1317,7 @@ int xradio_setup_mac(struct xradio_common *hw_priv)
 	return ret;
 }
 
-void xradio_pending_offchanneltx_work(struct work_struct *work)
+static void xradio_pending_offchanneltx_work(struct work_struct *work)
 {
 	struct xradio_vif *priv =
 	container_of(work, struct xradio_vif, pending_offchanneltx_work.work);

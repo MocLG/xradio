@@ -25,6 +25,7 @@
 #include "scan.h"
 #include "pm.h"
 #include "sdio.h"
+#include "main.h"
 
 /* TODO: use rates and channels from the device */
 #define RATETAB_ENT(_rate, _rateid, _flags)		\
@@ -218,7 +219,7 @@ static void xradio_set_ifce_comb(struct xradio_common *hw_priv,
 	hw->wiphy->n_iface_combinations = 3;
 }
 
-struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
+static struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 {
 	int i;
 	struct ieee80211_hw *hw;
@@ -441,7 +442,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 	return hw;
 }
 
-void xradio_free_common(struct ieee80211_hw *dev)
+static void xradio_free_common(struct ieee80211_hw *dev)
 {
 	int i;
 	struct xradio_common *hw_priv = dev->priv;
@@ -479,7 +480,7 @@ void xradio_free_common(struct ieee80211_hw *dev)
 	ieee80211_free_hw(dev);
 }
 
-int xradio_register_common(struct ieee80211_hw *dev)
+static int xradio_register_common(struct ieee80211_hw *dev)
 {
 	int err = 0;
 	struct xradio_common *hw_priv = dev->priv;
@@ -498,7 +499,7 @@ int xradio_register_common(struct ieee80211_hw *dev)
 	return 0;
 }
 
-void xradio_unregister_common(struct ieee80211_hw *dev)
+static void xradio_unregister_common(struct ieee80211_hw *dev)
 {
 	struct xradio_common *hw_priv = dev->priv;
 
