@@ -1192,8 +1192,10 @@ static int xradio_upload_qosnull(struct xradio_vif *priv)
 		.frame_type = WSM_FRAME_TYPE_QOS_NULL,
 		.rate = 0xFF,
 	};
-	if (!hw_priv) 
+	if (!hw_priv) {
 		ap_printk(XRADIO_DBG_ERROR,"%s: Cannot find xradio_common pointer!\n",__FUNCTION__);
+		return -1;
+	}
 	/*set qos template*/
 	skb = dev_alloc_skb(hw_priv->hw->extra_tx_headroom + sizeof(struct ieee80211_qos_hdr));
 	if (!skb) {
