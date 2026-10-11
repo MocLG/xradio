@@ -529,9 +529,10 @@ int xradio_queue_requeue(struct xradio_queue *queue, u32 packetID, bool check)
 	xradio_queue_parse_id(packetID, &queue_generation, &queue_id,
 				&item_generation, &item_id, &if_id, &link_id);
 
-	/* item_id comes from the firmware, so it must be validated before
-	 * it is used to index the pool. */
-	if (unlikely(item_id >= (unsigned) queue->capacity)) {
+	/* item_id and the interface id both come from the firmware, so
+	 * they must be validated before they are used as indexes. */
+	if (unlikely(item_id >= (unsigned) queue->capacity) ||
+	    unlikely(if_id >= XRWL_MAX_VIFS)) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -631,16 +632,20 @@ int xradio_queue_remove(struct xradio_queue *queue, u32 packetID)
 	xradio_queue_parse_id(packetID, &queue_generation, &queue_id,
 				&item_generation, &item_id, &if_id, &link_id);
 
+	/* The firmware provides these, so they are checked before they are
+	 * used to index the pool and the per interface counters. */
+	if (unlikely(item_id >= (unsigned) queue->capacity) ||
+	    unlikely(if_id >= XRWL_MAX_VIFS)) {
+		WARN_ON(1);
+		return -EINVAL;
+	}
+
 	item = &queue->pool[item_id];
 
 	spin_lock_bh(&queue->lock);
 	BUG_ON(queue_id != queue->queue_id);
-	/*TODO:COMBO:Add check for interface ID also */
 	if (unlikely(queue_generation != queue->generation)) {
 		ret = -ENOENT;
-	} else if (unlikely(item_id >= (unsigned) queue->capacity)) {
-		WARN_ON(1);
-		ret = -EINVAL;
 	} else if (unlikely(item->generation != item_generation)) {
 		WARN_ON(1);
 		ret = -ENOENT;
