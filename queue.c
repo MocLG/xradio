@@ -278,8 +278,10 @@ int xradio_queue_clear(struct xradio_queue *queue, int if_id)
 			&queue->pending, struct xradio_queue_item, head);
 		WARN_ON(!item->skb);
 		if (XRWL_ALL_IFS == if_id || item->txpriv.if_id == if_id) {
+			/* queue->lock is held here, so the copy cannot
+			 * sleep. */
 			struct xradio_queue_item *gc_item =
-				xradio_queue_get_post_gc(item, GFP_KERNEL);
+				xradio_queue_get_post_gc(item, GFP_ATOMIC);
 			if (unlikely(!gc_item)) {
 				/* The frame can no longer be reported through
 				 * mac80211, drop it without taking the kernel
