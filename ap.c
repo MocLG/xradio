@@ -994,6 +994,12 @@ static int xradio_upload_beacon(struct xradio_vif *priv)
 		return -ENOMEM;
 
 	mgmt = (void *)frame.skb->data;
+	/* The fixed part has to be present before the IE length below can
+	 * be derived, or it underflows. */
+	if (frame.skb->len < offsetof(struct ieee80211_mgmt, u.beacon.variable)) {
+		dev_kfree_skb(frame.skb);
+		return -1;
+	}
 	ies  = mgmt->u.beacon.variable;
 	ies_len = frame.skb->len - (u32)(ies - (u8 *)mgmt);
 
@@ -1289,6 +1295,11 @@ static int xradio_start_ap(struct xradio_vif *priv)
 	}
 
 	offset = offsetof(struct ieee80211_mgmt, u.beacon.variable);
+	if (skb->len < offset) {
+		ap_printk(XRADIO_DBG_ERROR, "%s, short beacon\n", __func__);
+		dev_kfree_skb(skb);
+		return -1;
+	}
 	ssidie = cfg80211_find_ie(WLAN_EID_SSID, skb->data + offset, skb->len - offset);
 
 	memset(priv->ssid, 0, sizeof(priv->ssid));
@@ -1616,6 +1627,10 @@ void xradio_ht_oper_update_work(struct work_struct *work)
 	if (WARN_ON(!skb))
 		return;
 
+	if (skb->len < offsetof(struct ieee80211_mgmt, u.beacon.variable)) {
+		dev_kfree_skb(skb);
+		return;
+	}
 	mgmt = (void *)skb->data;
 	ies = mgmt->u.beacon.variable;
 	ies_len = skb->len - (u32)(ies - (u8 *)mgmt);
