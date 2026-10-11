@@ -1995,9 +1995,8 @@ void xradio_rem_chan_timeout(struct work_struct *work)
 #endif
 	priv = __xrwl_hwpriv_to_vifpriv(hw_priv, if_id);
 	ret = WARN_ON(__xradio_flush(hw_priv, false, if_id));
-	if (!ret) {
+	if (!ret && priv)
 		xradio_disable_listening(priv);
-	}
 	atomic_set(&hw_priv->remain_on_channel, 0);
 	hw_priv->roc_if_id = -1;
 
