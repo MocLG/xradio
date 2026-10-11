@@ -862,7 +862,8 @@ void xradio_probe_work(struct work_struct *work)
 
 	if (ies_len) {
 		u8 *ssidie = (u8 *)cfg80211_find_ie(WLAN_EID_SSID, ies, ies_len);
-		if (ssidie && ssidie[1] && ssidie[1] <= sizeof(ssids[0].ssid)) {
+		if (ssidie && ssidie[1] && ssidie[1] <= sizeof(ssids[0].ssid) &&
+		    ssidie + 2 + ssidie[1] <= &ies[ies_len]) {
 			u8 *nextie = &ssidie[2 + ssidie[1]];
 			/* Remove SSID from the IE list. It has to be provided
 			 * as a separate argument in xradio_scan_start call */
