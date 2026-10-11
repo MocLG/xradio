@@ -19,7 +19,12 @@ int xradio_alloc_key(struct xradio_common *hw_priv)
 
 void xradio_free_key(struct xradio_common *hw_priv, int idx)
 {
-	BUG_ON(!(hw_priv->key_map & BIT(idx)));
+	/* hw_key_idx comes from the upper layer, so a stale or bogus
+	 * index must not index the key table out of bounds. */
+	if (WARN_ON(idx < 0 || idx > WSM_KEY_MAX_INDEX))
+		return;
+	if (WARN_ON(!(hw_priv->key_map & BIT(idx))))
+		return;
 	memset(&hw_priv->keys[idx], 0, sizeof(hw_priv->keys[idx]));
 	hw_priv->key_map &= ~BIT(idx);
 }
@@ -36,7 +41,7 @@ int xradio_upload_keys(struct xradio_vif *priv)
 	int idx, ret = 0;
 
 
-	for (idx = 0; idx <= WSM_KEY_MAX_IDX; ++idx)
+	for (idx = 0; idx <= WSM_KEY_MAX_INDEX; ++idx)
 		if (hw_priv->key_map & BIT(idx)) {
 			ret = wsm_add_key(hw_priv, &hw_priv->keys[idx], priv->if_id);
 			if (ret < 0)
@@ -208,7 +213,7 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 			.entryIndex = key->hw_key_idx,
 		};
 
-		if (wsm_key.entryIndex > WSM_KEY_MAX_IDX) {
+		if (wsm_key.entryIndex > WSM_KEY_MAX_INDEX) {
 			ret = -EINVAL;
 			goto finally;
 		}
