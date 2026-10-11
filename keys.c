@@ -111,6 +111,16 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 			}
 			break;
 		case WLAN_CIPHER_SUITE_TKIP:
+			/* The key material, the MIC keys and the sequence
+			 * counter are read out of the key buffer, whose length
+			 * is not checked by the stack. */
+			if (pairwise && key->keylen < 32) {
+				xradio_free_key(hw_priv, idx);
+				wiphy_err(dev->wiphy, "TKIP keylen too short=%d!\n",
+				          key->keylen);
+				ret = -EINVAL;
+				goto finally;
+			}
 			if (pairwise) {
 				wsm_key->type = WSM_KEY_TYPE_TKIP_PAIRWISE;
 				memcpy(wsm_key->tkipPairwiseKey.peerAddress, peer_addr, ETH_ALEN);
@@ -119,6 +129,14 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 				memcpy(wsm_key->tkipPairwiseKey.rxMicKey, &key->key[24], 8);
 			} else {
 				size_t mic_offset = (priv->mode == NL80211_IFTYPE_AP) ? 16 : 24;
+				if (key->keylen < mic_offset + 8) {
+					xradio_free_key(hw_priv, idx);
+					wiphy_err(dev->wiphy,
+					          "TKIP group keylen too short=%d!\n",
+					          key->keylen);
+					ret = -EINVAL;
+					goto finally;
+				}
 				wsm_key->type = WSM_KEY_TYPE_TKIP_GROUP;
 				memcpy(wsm_key->tkipGroupKey.tkipKeyData,&key->key[0],  16);
 				memcpy(wsm_key->tkipGroupKey.rxMicKey, &key->key[mic_offset], 8);
@@ -129,6 +147,13 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 			}
 			break;
 		case WLAN_CIPHER_SUITE_CCMP:
+			if (key->keylen < 16) {
+				xradio_free_key(hw_priv, idx);
+				wiphy_err(dev->wiphy, "CCMP keylen too short=%d!\n",
+				          key->keylen);
+				ret = -EINVAL;
+				goto finally;
+			}
 			if (pairwise) {
 				wsm_key->type = WSM_KEY_TYPE_AES_PAIRWISE;
 				memcpy(wsm_key->aesPairwiseKey.peerAddress, peer_addr, ETH_ALEN);
