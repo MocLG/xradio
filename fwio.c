@@ -112,7 +112,28 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 
 	//parse SDD config.
 	hw_priv->is_BT_Present = false;
+
+	if (hw_priv->sdd->size < FIELD_OFFSET(struct xradio_sdd, data)) {
+		dev_warn(hw_priv->pdev, "SDD image is too short (%zu bytes)\n",
+			 hw_priv->sdd->size);
+		goto bad_sdd;
+	}
+
 	pElement = (struct xradio_sdd *)hw_priv->sdd->data;
+
+	/* The first element is a header that carries no configuration, the
+	 * vendor driver skips it before it starts looking at the elements it
+	 * understands.  Keep doing that, otherwise its payload is parsed as
+	 * an element and the rest of the image is decoded at the wrong
+	 * offset. */
+	if ((size_t)FIELD_OFFSET(struct xradio_sdd, data) + pElement->length >
+	    hw_priv->sdd->size) {
+		dev_warn(hw_priv->pdev, "truncated SDD header element len=%d\n",
+			 pElement->length);
+		goto bad_sdd;
+	}
+	parsedLength += FIELD_OFFSET(struct xradio_sdd, data) + pElement->length;
+	pElement = FIND_NEXT_ELT(pElement);
 
 	while (parsedLength < hw_priv->sdd->size) {
 		size_t elt_size;
@@ -200,6 +221,13 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 		xradio_dbg(XRADIO_DBG_NIY, "PTA element NOT found.\n");
 	}
 	return ret;
+
+bad_sdd:
+	/* The image cannot be decoded, so do not leave it for a probe that
+	 * is about to fail. */
+	release_firmware(hw_priv->sdd);
+	hw_priv->sdd = NULL;
+	return -EINVAL;
 }
 
 static int xradio_firmware(struct xradio_common *hw_priv)
