@@ -918,6 +918,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 	struct xradio_vif *priv = NULL;
 	int i = 0;
 	int if_id;
+	bool roc_started = false;
 #ifdef	TES_P2P_0002_ROC_RESTART
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
 	struct timespec64 TES_P2P_0002_tmval;
@@ -962,16 +963,23 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 			queue_delayed_work(hw_priv->workqueue, &hw_priv->rem_chan_timeout,
 			                   duration * HZ / 1000);
 			priv->join_status = XRADIO_JOIN_STATUS_MONITOR;
+			roc_started = true;
 			ieee80211_ready_on_channel(hw);
 		} else {
 			hw_priv->roc_if_id = -1;
-			up(&hw_priv->scan.lock);
 		}
 
 #ifdef ROC_DEBUG
 		sta_printk(XRADIO_DBG_WARN, "ROC OUT %d\n", priv->if_id);
 #endif
 			}
+		/* The scan lock is released by the remain on channel timeout
+		 * when a channel was entered.  When no interface could enter it
+		 * the lock has to be given back here, otherwise every later scan
+		 * and every stop request waits for it forever. */
+		if (!roc_started)
+			up(&hw_priv->scan.lock);
+
 		/* set the channel to supplied ieee80211_channel pointer, if it
 	        is not set. This is to remove the crash while sending a probe res
 	        in listen state. Later channel will updated on
