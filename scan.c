@@ -377,9 +377,14 @@ void xradio_scan_work(struct work_struct *work)
 		            "ignoring scan work\n");
 		/* The scan lock and the TX lock were taken when the scan was
 		 * started.  They must be released or the next scan or flush
-		 * blocks forever. */
+		 * blocks forever.  mac80211 is also still waiting for this scan
+		 * to finish and keeps its state until the driver reports it, so
+		 * report it as aborted. */
 		hw_priv->scan.req = NULL;
 		wsm_unlock_tx(hw_priv);
+		memset(&scan_info, 0, sizeof(scan_info));
+		scan_info.aborted = true;
+		ieee80211_scan_completed(hw_priv->hw, &scan_info);
 		up(&hw_priv->scan.lock);
 		return;
 	}
