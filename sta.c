@@ -127,14 +127,29 @@ void xradio_stop(struct ieee80211_hw *dev)
 	struct xradio_vif *priv = NULL;
 	LIST_HEAD(list);
 	int i;
+	unsigned long scan_lock_deadline;
+	bool have_scan_lock = false;
 
 	wsm_lock_tx(hw_priv);
-	while (down_trylock(&hw_priv->scan.lock)) {
+	/* Wait for a running scan to release the lock, but do not hang
+	 * forever when it never does. */
+	scan_lock_deadline = jiffies + 2 * HZ;
+	for (;;) {
+		if (!down_trylock(&hw_priv->scan.lock)) {
+			have_scan_lock = true;
+			break;
+		}
 		/* Scan is in progress. Force it to stop. */
 		hw_priv->scan.req = NULL;
+		if (time_after(jiffies, scan_lock_deadline)) {
+			wiphy_warn(dev->wiphy,
+			           "scan did not stop, continuing without it\n");
+			break;
+		}
 		schedule();
 	}
-	up(&hw_priv->scan.lock);
+	if (have_scan_lock)
+		up(&hw_priv->scan.lock);
 
 	cancel_delayed_work_sync(&hw_priv->scan.probe_work);
 	cancel_delayed_work_sync(&hw_priv->scan.timeout);
