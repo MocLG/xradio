@@ -1028,7 +1028,10 @@ static int xradio_upload_beacon(struct xradio_vif *priv)
 
 		ap_printk(XRADIO_DBG_NIY, "%s: hidden_ssid set\n", __func__);
 		ssid_ie = (u8 *)cfg80211_find_ie(WLAN_EID_SSID, ies, ies_len);
-		WARN_ON(!ssid_ie);
+		if (WARN_ON(!ssid_ie)) {
+			dev_kfree_skb(frame.skb);
+			return -1;
+		}
 		ssid_len = ssid_ie[1];
 		if (ssid_len) {
 			ap_printk(XRADIO_DBG_MSG, "hidden_ssid with zero content ssid\n");
@@ -1102,8 +1105,18 @@ static int xradio_upload_proberesp(struct xradio_vif *priv)
 		  */
 
 		offset  = offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
+		if (frame.skb->len <= offset) {
+			dev_kfree_skb(frame.skb);
+			return -1;
+		}
 		ssid_ie = (u8 *)cfg80211_find_ie(WLAN_EID_SSID, frame.skb->data + offset,
 		                           frame.skb->len - offset);
+		if (!ssid_ie) {
+			ap_printk(XRADIO_DBG_ERROR, "%s: probe response without ssid\n",
+			         __func__);
+			dev_kfree_skb(frame.skb);
+			return -1;
+		}
 		ssid_len = ssid_ie[1];
 		if (ssid_len && (ssid_len == priv->ssid_length)) {
 			memcpy(ssid_ie + 2, priv->ssid, ssid_len);
