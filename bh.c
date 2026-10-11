@@ -475,10 +475,14 @@ static int xradio_bh_rx(struct xradio_common *hw_priv, u16* nextlen) {
 	size_t alloc_len;
 	u8 *data;
 	int ret;
+	int avail_len;
 
-	read_len = *nextlen > 0 ? *nextlen : xradio_bh_rx_availlen(hw_priv);
-	if(read_len <= 0)
-		return read_len;
+	/* xradio_bh_rx_availlen() reports errors as negative values, so the
+	 * availability has to be kept signed until it has been checked. */
+	avail_len = *nextlen > 0 ? (int)*nextlen : xradio_bh_rx_availlen(hw_priv);
+	if (avail_len <= 0)
+		return avail_len;
+	read_len = avail_len;
 
 	if (read_len < sizeof(struct wsm_hdr) || (read_len > EFFECTIVE_BUF_SIZE)) {
 		dev_err(hw_priv->pdev, "Invalid read len: %zu", read_len);
