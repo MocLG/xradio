@@ -163,7 +163,6 @@ int xradio_indirect_read(struct xradio_common *hw_priv, u32 addr, void *buf,
 	if ((buf_len / 2) >= 0x1000) {
 		dev_err(hw_priv->pdev, "Can't read more than 0xfff words.\n");
 		return -EINVAL;
-		goto out;
 	}
 
 	sdio_lock(hw_priv);
