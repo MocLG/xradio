@@ -1374,8 +1374,12 @@ static int wsm_receive_indication(struct xradio_common *hw_priv,
 		hdr_len = buf->data - buf->begin;
 		skb_pull(*skb_p, hdr_len);
 
-		/* The frame must still hold an 802.11 header. */
-		if ((*skb_p)->len < sizeof(struct ieee80211_hdr)) {
+		/* The frame must still hold an 802.11 header.  Do not ask for
+		 * the larger struct ieee80211_hdr here: a null data frame is
+		 * only 24 bytes long and a power save poll, which the driver
+		 * handles itself, is 16.  That is the size xradio_rx_cb()
+		 * uses as well. */
+		if ((*skb_p)->len < sizeof(struct ieee80211_pspoll)) {
 			spin_unlock(&priv->vif_lock);
 			return 0;
 		}
