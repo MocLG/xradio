@@ -233,8 +233,8 @@ int wsm_release_buffer_to_fw(struct xradio_vif *priv, int count)
 			wsm = (struct wsm_hdr *)buf->begin;
 			BUG_ON(buf_len < sizeof(*wsm));
 
-			wsm->id &= __cpu_to_le32(~WSM_TX_SEQ(WSM_TX_SEQ_MAX));
-			wsm->id |= cpu_to_le32(WSM_TX_SEQ(hw_priv->wsm_tx_seq));
+			wsm->id &= cpu_to_le16(~WSM_TX_SEQ(WSM_TX_SEQ_MAX) & 0xFFFF);
+			wsm->id |= cpu_to_le16(WSM_TX_SEQ(hw_priv->wsm_tx_seq));
 
 			dev_dbg(hw_priv->pdev, "REL %d\n", hw_priv->wsm_tx_seq);
 			if (WARN_ON(xradio_data_write(hw_priv, buf->begin, buf_len))) {
@@ -713,8 +713,8 @@ static int xradio_bh_tx(struct xradio_common *hw_priv){
 			}
 
 			/* Make sequence number. */
-			wsm->id &= __cpu_to_le32(~WSM_TX_SEQ(WSM_TX_SEQ_MAX));
-			wsm->id |= cpu_to_le32(WSM_TX_SEQ(hw_priv->wsm_tx_seq));
+			wsm->id &= cpu_to_le16(~WSM_TX_SEQ(WSM_TX_SEQ_MAX) & 0xFFFF);
+			wsm->id |= cpu_to_le16(WSM_TX_SEQ(hw_priv->wsm_tx_seq));
 
 			/* Send the data to devices. */
 			if (WARN_ON(xradio_data_write(hw_priv, data, tx_len))) {
