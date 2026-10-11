@@ -218,7 +218,10 @@ void xradio_rx_cb(struct xradio_vif *priv,
        
 	if (arg->rxedRate >= 14) {
 		hdr->flag |= RX_ENC_HT;
-		hdr->rate_idx = arg->rxedRate - 14;
+		/* The radio has a single spatial stream, so only the first
+		 * eight MCS values exist.  A larger value is a firmware error
+		 * and mac80211 drops such a frame with a warning. */
+		hdr->rate_idx = min_t(u8, arg->rxedRate - 14, 7);
 	} else if (arg->rxedRate >= 4) {
 		if (hdr->band == NL80211_BAND_5GHZ)
 			hdr->rate_idx = arg->rxedRate - 6;
