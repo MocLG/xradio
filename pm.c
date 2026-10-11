@@ -798,6 +798,12 @@ static int xradio_poweroff_suspend(struct xradio_common *hw_priv)
 	/* Stop serving thread */
 	if (xradio_bh_suspend(hw_priv)) {
 		pm_printk(XRADIO_DBG_WARN, "%s, xradio_bh_suspend failed!\n", __func__);
+		/* The thread parks itself even if the wait for it timed out,
+		 * and mac80211 does not call the resume callback after a failed
+		 * suspend, so wake it up again here.  Otherwise the data path
+		 * stays dead until the next resume. */
+		if (!hw_priv->bh_error)
+			WARN_ON(xradio_bh_resume(hw_priv));
 		atomic_set(&hw_priv->suspend_state, XRADIO_RESUME);
 		return -EBUSY;
 	}

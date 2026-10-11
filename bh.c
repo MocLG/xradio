@@ -837,24 +837,34 @@ static int xradio_bh(void *arg)
 			  //continue;
 			  //}
 		} else if (suspend) {
-			dev_dbg(hw_priv->pdev, "Host suspend request.\n");
-			/* Check powersave setting again. */
-			if (hw_priv->powersave_enabled) {
-				dev_dbg(hw_priv->pdev,
+			/* A resume can arrive before the thread gets here, when a
+			 * suspend request timed out while the thread was busy.
+			 * Do not overwrite it with the parked state, that would
+			 * leave the thread parked with nobody left to wake it. */
+			if (XRADIO_BH_RESUME !=
+			    atomic_read(&hw_priv->bh_suspend)) {
+				dev_dbg(hw_priv->pdev, "Host suspend request.\n");
+				/* Check powersave setting again. */
+				if (hw_priv->powersave_enabled) {
+					dev_dbg(hw_priv->pdev,
 						"Device idle(host suspend), can sleep.\n");
-				WARN_ON(xradio_reg_write_16(hw_priv, HIF_CONTROL_REG_ID, 0));
-				hw_priv->device_can_sleep = true;
+					WARN_ON(xradio_reg_write_16(hw_priv,
+								HIF_CONTROL_REG_ID, 0));
+					hw_priv->device_can_sleep = true;
+				}
+
+				/* bh thread go to suspend. */
+				atomic_set(&hw_priv->bh_suspend,
+						XRADIO_BH_SUSPENDED);
+				wake_up(&hw_priv->bh_evt_wq);
+				wait_event(hw_priv->bh_wq,
+						XRADIO_BH_RESUME ==
+							atomic_read(&hw_priv->bh_suspend) ||
+						kthread_should_stop());
+
+				if (kthread_should_stop())
+					break;
 			}
-
-			/* bh thread go to suspend. */
-			atomic_set(&hw_priv->bh_suspend, XRADIO_BH_SUSPENDED);
-			wake_up(&hw_priv->bh_evt_wq);
-			wait_event(hw_priv->bh_wq,
-					XRADIO_BH_RESUME == atomic_read(&hw_priv->bh_suspend) ||
-					kthread_should_stop());
-
-			if (kthread_should_stop())
-				break;
 			dev_dbg(hw_priv->pdev, "Host resume.\n");
 			atomic_set(&hw_priv->bh_suspend, XRADIO_BH_RESUMED);
 			wake_up(&hw_priv->bh_evt_wq);
