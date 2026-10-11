@@ -2020,12 +2020,13 @@ int wsm_handle_exception(struct xradio_common *hw_priv, u8 *data, size_t len)
 		           i + 0, reg[i + 0], i + 1, reg[i + 1],
 		           i + 2, reg[i + 2], i + 3, reg[i + 3]);
 	}
+	/* The register dump has a fixed layout, so index it with constants
+	 * rather than relying on the loop counter's final value. */
 	dev_err(hw_priv->pdev, "Firmware:" \
 	           "R12: 0x%.8X, SP: 0x%.8X, LR: 0x%.8X, PC: 0x%.8X,\n",
-	           reg[i + 0], reg[i + 1], reg[i + 2], reg[i + 3]);
-	i += 4;
+	           reg[12], reg[13], reg[14], reg[15]);
 	dev_err(hw_priv->pdev, "Firmware:CPSR: 0x%.8X, SPSR: 0x%.8X\n",
-	           reg[i + 0], reg[i + 1]);
+	           reg[16], reg[17]);
 	
 	return 0;
 
