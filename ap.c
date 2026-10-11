@@ -208,7 +208,7 @@ static int xradio_set_tim_impl(struct xradio_vif *priv, bool aid0_bit_set)
 		.what = WSM_UPDATE_IE_BEACON,
 		.count = 1,
 	};
-	u16 tim_offset, tim_length;
+	u16 tim_offset, tim_length, cmp_len;
 	ap_printk(XRADIO_DBG_TRC,"%s\n", __FUNCTION__);
 	ap_printk(XRADIO_DBG_MSG, "%s mcast: %s.\n", __func__, 
 	          aid0_bit_set ? "ena" : "dis");
@@ -237,10 +237,15 @@ static int xradio_set_tim_impl(struct xradio_vif *priv, bool aid0_bit_set)
 
 	update_ie.ies = &skb->data[tim_offset];
 	update_ie.length = tim_length;
+	/* tim_length covers the TIM element and the IEs that follow it, so it
+	 * can be larger than the room kept for the last copy.  Only the first
+	 * bytes are remembered and compared. */
+	cmp_len = min_t(u16, tim_length, sizeof(priv->last_tim));
 	//filter same tim info, yangfh
-	if(memcmp(priv->last_tim, update_ie.ies, tim_length)) {
+	if (tim_length > sizeof(priv->last_tim) ||
+	    memcmp(priv->last_tim, update_ie.ies, cmp_len)) {
 		WARN_ON(wsm_update_ie(hw_priv, &update_ie, priv->if_id));
-		memcpy(priv->last_tim, update_ie.ies, tim_length);
+		memcpy(priv->last_tim, update_ie.ies, cmp_len);
 		ap_printk(XRADIO_DBG_MSG,"%02x %02x %02x %02x %02x %02x\n", 
 		          update_ie.ies[0], update_ie.ies[1], update_ie.ies[2], 
 		          update_ie.ies[3], update_ie.ies[4], update_ie.ies[5]);
