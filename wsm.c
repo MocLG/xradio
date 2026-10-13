@@ -1071,7 +1071,6 @@ static int wsm_request_buffer_confirm(struct xradio_vif *priv,
 
 	if (change_mask) {
 		struct ieee80211_sta *sta;
-		int ret = 0;
 
 
 		for (i = 0; i < MAX_STA_IN_AP_MODE ; ++i) {
@@ -1090,9 +1089,11 @@ static int wsm_request_buffer_confirm(struct xradio_vif *priv,
 					wsm_printk(XRADIO_DBG_MSG, "WRBC - could not find sta %pM\n",
 							priv->link_id_db[i].mac);
 				} else {
-					ret = ieee80211_sta_ps_transition_ni(sta, (sta_asleep_mask & mask) ? true: false);
-					wsm_printk(XRADIO_DBG_MSG, "PS State NOTIFIED %d\n", ret);
-					WARN_ON(ret);
+					/* The transition helper returns void, the
+					 * firmware state was already applied above. */
+					ieee80211_sta_ps_transition_ni(sta,
+						(sta_asleep_mask & mask) ? true : false);
+					wsm_printk(XRADIO_DBG_MSG, "PS State NOTIFIED\n");
 				}
 				rcu_read_unlock();			
 			}
